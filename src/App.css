@@ -49,11 +49,12 @@ body {
   padding: 1rem 2rem;
  
 }
-
+@media (max-width: 768px) {
 .logo-section {
   display: flex;
   align-items: center;
   gap: 15px;
+}
 }
 
 .app-logo {
