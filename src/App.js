@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import './App.css';
 import Weather from './components/Weather';
@@ -8,9 +8,9 @@ import Home from './pages/Home';
 import Cities from './pages/Cities';
 import About from './pages/About';
 
-// CLÉ API
-const WEATHER_API_KEY = '55005332905f5a0a0ef8dede852a851b';
-const GNEWS_API_KEY = '9f3fa7fc04e0538813d6be05f23fc8e9';
+// CLÉ API avec variables d'environnement pour Netlify
+const WEATHER_API_KEY = process.env.REACT_APP_WEATHER_API_KEY || '55005332905f5a0a0ef8dede852a851b';
+const GNEWS_API_KEY = process.env.REACT_APP_GNEWS_API_KEY || '9f3fa7fc04e0538813d6be05f23fc8e9';
 
 function App() {
   const [weather, setWeather] = useState(null);
@@ -21,16 +21,8 @@ function App() {
   const [activeTab, setActiveTab] = useState('home');
   const [showWelcome, setShowWelcome] = useState(true);
 
-  useEffect(() => {
-    fetchData();
-    // Masquer la section welcome après 4 secondes
-    const timer = setTimeout(() => {
-      setShowWelcome(false);
-    }, 4000);
-    return () => clearTimeout(timer);
-  }, []);
-
-  const fetchData = async (newCity = city) => {
+  // Déplacer fetchData avant useEffect et utiliser useCallback
+  const fetchData = useCallback(async (newCity = city) => {
     setLoading(true);
     setError('');
     setShowWelcome(false);
@@ -45,7 +37,7 @@ function App() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [city]); // Ajouter city comme dépendance
 
   const fetchWeather = async (cityName) => {
     try {
@@ -83,6 +75,16 @@ function App() {
       setNews(mockArticles);
     }
   };
+
+  // Corriger useEffect avec les bonnes dépendances
+  useEffect(() => {
+    fetchData();
+    // Masquer la section welcome après 4 secondes
+    const timer = setTimeout(() => {
+      setShowWelcome(false);
+    }, 4000);
+    return () => clearTimeout(timer);
+  }, [fetchData]); // Ajouter fetchData comme dépendance
 
   const handleSearch = (newCity) => {
     if (newCity.trim() !== '') {
