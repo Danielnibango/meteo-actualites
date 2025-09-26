@@ -21,7 +21,50 @@ function App() {
   const [activeTab, setActiveTab] = useState('home');
   const [showWelcome, setShowWelcome] = useState(true);
 
-  // Déplacer fetchData avant useEffect et utiliser useCallback
+  // Fonctions API séparées
+  const fetchWeather = useCallback(async (cityName) => {
+    try {
+      const response = await axios.get(
+        `https://api.openweathermap.org/data/2.5/weather?q=${cityName}&appid=${WEATHER_API_KEY}&units=metric&lang=fr`
+      );
+      setWeather(response.data);
+      return response.data;
+    } catch (err) {
+      setError('Ville non trouvée. Essayez une autre ville.');
+      throw err;
+    }
+  }, []);
+
+  const fetchNews = useCallback(async (cityName) => {
+    try {
+      const response = await axios.get(
+        `https://gnews.io/api/v4/search?q=${cityName}&lang=fr&max=5&apikey=${GNEWS_API_KEY}`
+      );
+      
+      if (response.data.articles && response.data.articles.length > 0) {
+        setNews(response.data.articles);
+        return response.data.articles;
+      } else {
+        throw new Error('Aucun article trouvé');
+      }
+      
+    } catch (err) {
+      console.log('Utilisation des données mockées:', err);
+      const mockArticles = [
+        {
+          title: `🌍 Actualités à ${cityName}`,
+          description: `Restez informé des derniers développements et événements dans la région de ${cityName}.`,
+          url: `https://fr.wikipedia.org/wiki/${cityName}`,
+          source: { name: 'Encyclopédie Locale' },
+          publishedAt: new Date().toISOString()
+        }
+      ];
+      setNews(mockArticles);
+      return mockArticles;
+    }
+  }, []);
+
+  // Fonction principale fetchData
   const fetchData = useCallback(async (newCity = city) => {
     setLoading(true);
     setError('');
@@ -34,71 +77,45 @@ function App() {
       ]);
     } catch (err) {
       setError('Erreur lors du chargement des données');
+      console.error('Erreur fetchData:', err);
     } finally {
       setLoading(false);
     }
-  }, [city]); // Ajouter city comme dépendance
+  }, [city, fetchWeather, fetchNews]); // Dépendances correctes
 
-  const fetchWeather = async (cityName) => {
-    try {
-      const response = await axios.get(
-        `https://api.openweathermap.org/data/2.5/weather?q=${cityName}&appid=${WEATHER_API_KEY}&units=metric&lang=fr`
-      );
-      setWeather(response.data);
-    } catch (err) {
-      setError('Ville non trouvée. Essayez une autre ville.');
-    }
-  };
-
-  const fetchNews = async (cityName) => {
-    try {
-      const response = await axios.get(
-        `https://gnews.io/api/v4/search?q=${cityName}&lang=fr&max=5&apikey=${GNEWS_API_KEY}`
-      );
-      
-      if (response.data.articles && response.data.articles.length > 0) {
-        setNews(response.data.articles);
-      } else {
-        throw new Error('Aucun article trouvé');
-      }
-      
-    } catch (err) {
-      const mockArticles = [
-        {
-          title: `🌍 Actualités à ${cityName}`,
-          description: `Restez informé des derniers développements et événements dans la région de ${cityName}.`,
-          url: `https://fr.wikipedia.org/wiki/${cityName}`,
-          source: { name: 'Encyclopédie Locale' },
-          publishedAt: new Date().toISOString()
-        }
-      ];
-      setNews(mockArticles);
-    }
-  };
-
-  // Corriger useEffect avec les bonnes dépendances
+  // useEffect corrigé
   useEffect(() => {
     fetchData();
+    
     // Masquer la section welcome après 4 secondes
     const timer = setTimeout(() => {
       setShowWelcome(false);
     }, 4000);
+    
     return () => clearTimeout(timer);
-  }, [fetchData]); // Ajouter fetchData comme dépendance
+  }, [fetchData]); // fetchData est maintenant stable grâce à useCallback
 
-  const handleSearch = (newCity) => {
+  // Gestion des recherches
+  const handleSearch = useCallback((newCity) => {
     if (newCity.trim() !== '') {
       setCity(newCity);
-      fetchData(newCity);
       setActiveTab('results');
+      // fetchData sera appelé via le useEffect à cause du changement de city
     }
-  };
+  }, []);
 
-  const handleCitySelect = (selectedCity) => {
+  const handleCitySelect = useCallback((selectedCity) => {
     setCity(selectedCity);
-    fetchData(selectedCity);
     setActiveTab('results');
-  };
+    // fetchData sera appelé via le useEffect à cause du changement de city
+  }, []);
+
+  // Mettre à jour les données quand la ville change
+  useEffect(() => {
+    if (activeTab === 'results') {
+      fetchData(city);
+    }
+  }, [city, activeTab, fetchData]);
 
   const popularCities = ['Paris', 'London', 'New York', 'Tokyo', 'Dubai', 'Sydney', 'Berlin', 'Rome', 'Barcelona', 'Singapore'];
 
